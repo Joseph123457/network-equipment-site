@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>스펙 항목 관리</title></head>
+<body>
+    <h1>스펙 항목 목록</h1>
+    <ul>
+        {% for spec in spec_items %}
+            <li>{{ spec }} <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="item_name" value="{{ spec }}">
+                <button type="submit">삭제</button>
+            </form></li>
+        {% endfor %}
+    </ul>
+    <form method="POST">
+        <input type="hidden" name="action" value="add">
+        <label>새 항목 추가:</label> <input type="text" name="item_name">
+        <button type="submit">추가</button>
+    </form>
+    <br>
+    <a href="/admin">관리자 페이지로 돌아가기</a>
+</body>
+</html>

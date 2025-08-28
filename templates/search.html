@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>검색 결과</title></head>
+<body>
+    <h1>검색 결과</h1>
+    {% for result in results %}
+        <a href="/equipment/{{ result[0] }}">{{ result[1] }} ({{ result[2] }})</a><br>
+    {% endfor %}
+    <br>
+    <button onclick="history.back()">뒤로가기</button>
+    <a href="/">홈</a>
+</body>
+</html>

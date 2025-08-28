@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>OTP 확인</title></head>
+<body>
+    <form method="POST">
+        <label>OTP:</label> <input type="text" name="otp">
+        <button type="submit">확인</button>
+    </form>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+</body>
+</html>

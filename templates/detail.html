@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{ equip[1] }}</title></head>
+<body>
+    <h1>{{ equip[1] }} ({{ equip[2] }})</h1>
+    {% if equip[5] %}<img src="/static/uploads/{{ equip[5] }}" alt="이미지">{% endif %}
+    <h2>기술 스펙</h2>
+    <ul id="specs">
+        {% for key, value in specs.items() %}
+            <li>{{ key }}: {{ value }}</li>
+        {% endfor %}
+    </ul>
+    <button onclick="copySpecs()">Copy Specs</button>
+    <script>
+        function copySpecs() {
+            var specsText = document.getElementById('specs').innerText;
+            navigator.clipboard.writeText(specsText).then(() => alert('Copied!'));
+        }
+    </script>
+    <div style="position: fixed; bottom: 10px; right: 10px;">업로드 날짜: {{ equip[6] }}</div>
+    <br>
+    <button onclick="history.back()">뒤로가기</button>
+    <a href="/">홈</a>
+</body>
+</html>
