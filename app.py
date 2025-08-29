@@ -3,6 +3,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
+import sqlite3
 import os
 import boto3
 import requests
@@ -17,8 +18,8 @@ s3 = boto3.client('s3',
                   aws_access_key_id=os.getenv('R2_ACCESS_KEY_ID'),
                   aws_secret_access_key=os.getenv('R2_SECRET_KEY_ID'))
 
-def init_db(env):
-    conn = env.D1_DATABASE
+def init_db():
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS equipment
                  (id INTEGER PRIMARY KEY, name TEXT, manufacturer TEXT, category TEXT, specs TEXT, image TEXT, upload_date TEXT)''')
@@ -33,9 +34,7 @@ def init_db(env):
     conn.commit()
     conn.close()
 
-# Workers 환경에서 호출
-def init_app(app, env):
-    init_db(env)
+init_db()
 
 class User(UserMixin):
     pass
@@ -66,7 +65,7 @@ def index():
 @app.route('/search', methods=['GET'])
 def search():
     query = request.args.get('q', '').lower()
-    conn = app.env.D1_DATABASE
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute("SELECT * FROM equipment WHERE LOWER(name) LIKE ? OR LOWER(manufacturer) LIKE ? OR LOWER(specs) LIKE ?",
               (f'%{query}%', f'%{query}%', f'%{query}%'))
@@ -84,7 +83,7 @@ def search():
 def admin_login():
     form = LoginForm()
     if form.validate_on_submit():
-        conn = app.env.D1_DATABASE
+        conn = sqlite3.connect('database.db')
         c = conn.cursor()
         c.execute("SELECT * FROM users WHERE username=? AND password=?", (form.username.data, form.password.data))
         user = c.fetchone()
@@ -131,14 +130,14 @@ def add_equipment():
             if value:
                 specs[name] = value
         specs_str = str(specs)
-        conn = app.env.D1_DATABASE
+        conn = sqlite3.connect('database.db')
         c = conn.cursor()
         c.execute("INSERT INTO equipment (name, manufacturer, category, specs, image, upload_date) VALUES (?, ?, ?, ?, ?, ?)",
                   (name, manufacturer, category, specs_str, image_url, upload_date))
         conn.commit()
         conn.close()
         return redirect(url_for('admin_dashboard'))
-    conn = app.env.D1_DATABASE
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute("SELECT item_name FROM spec_items")
     spec_items = [row[0] for row in c.fetchall()]
@@ -148,7 +147,7 @@ def add_equipment():
 @app.route('/admin/manage_specs', methods=['GET', 'POST'])
 @login_required
 def manage_specs():
-    conn = app.env.D1_DATABASE
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
     if request.method == 'POST':
         action = request.form['action']
@@ -165,18 +164,13 @@ def manage_specs():
 
 @app.route('/equipment/<int:id>')
 def equipment_detail(id):
-    conn = app.env.D1_DATABASE
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute("SELECT * FROM equipment WHERE id=?", (id,))
     equip = c.fetchone()
     conn.close()
     specs = eval(equip[4]) if equip[4] else {}
     return render_template('detail.html', equip=equip, specs=specs)
-
-def handler(env):
-    app.env = env  # Workers 환경에서 D1 바인딩 저장
-    init_app(app, env)
-    return app
 
 if __name__ == '__main__':
     os.makedirs('static/uploads', exist_ok=True)
