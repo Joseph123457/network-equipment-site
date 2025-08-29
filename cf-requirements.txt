@@ -1,5 +1,0 @@
-flask
-flask-login
-flask-wtf
-boto3
-requests

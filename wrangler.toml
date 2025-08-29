@@ -1,7 +1,0 @@
-name = "network-equipment-worker-new"
-main = "app.py"
-compatibility_date = "2025-08-29"
-compatibility_flags = ["python_workers"]
-d1_databases = [
-  { binding = "D1_DATABASE", database_name = "equipment-db", database_id = "dd2f8376-705c-4aa2-a307-e53e1017762d" }
-]
