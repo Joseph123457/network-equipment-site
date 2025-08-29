@@ -1,0 +1,5 @@
+name = "network-equipment-worker"
+main = "app.py"
+compatibility_date = "2025-08-29"
+[d1_databases]
+D1_DATABASE = { binding = "D1_DATABASE", database_name = "equipment-db", database_id = "dd2f8376-705c-4aa2-a307-e53e1017762d" }

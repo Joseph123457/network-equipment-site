@@ -21,7 +21,6 @@
         <label>사진:</label> <input type="file" name="image"><br>
         <h3>기술 스펙</h3>
         <div id="spec-container">
-            <!-- 동적으로 추가될 스펙 입력 줄 -->
         </div>
         <button type="button" onclick="addSpecRow()">스펙 추가</button><br><br>
         <button type="submit">등록</button>
@@ -29,7 +28,6 @@
     <br>
     <button onclick="window.location.href='/admin'">관리자 페이지로 돌아가기</button>
     <script>
-        // 스펙 항목 목록 (서버에서 전달)
         const specItems = {{ spec_items | tojson }};
         function addSpecRow() {
             const container = document.getElementById('spec-container');
@@ -44,7 +42,6 @@
             `;
             container.appendChild(row);
         }
-        // 페이지 로드 시 기본 스펙 줄 하나 추가
         window.onload = () => addSpecRow();
     </script>
 </body>
