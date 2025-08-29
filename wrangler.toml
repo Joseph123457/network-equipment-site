@@ -1,4 +1,4 @@
-name = "network-equipment-worker"
+name = "network-equipment-worker-new"
 main = "app.py"
 compatibility_date = "2025-08-29"
 compatibility_flags = ["python_workers"]
