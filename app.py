@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, FileField, TextAreaField
 from wtforms.validators import DataRequired
 import sqlite3
 import os
@@ -50,6 +50,13 @@ class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
+
+class EditEquipmentForm(FlaskForm):
+    name = StringField('제품명', validators=[DataRequired()])
+    manufacturer = StringField('제조사', validators=[DataRequired()])
+    category = SelectField('카테고리', choices=[('보안', '보안'), ('네트워크', '네트워크'), ('서버', '서버')])
+    upload_date = StringField('업로드 날짜', validators=[DataRequired()])
+    image = FileField('사진')
 
 def send_otp_to_telegram(chat_id, token, otp):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -171,6 +178,77 @@ def equipment_detail(id):
     conn.close()
     specs = eval(equip[4]) if equip[4] else {}
     return render_template('detail.html', equip=equip, specs=specs)
+
+@app.route('/admin/equipment_list', methods=['GET', 'POST'])
+@login_required
+def equipment_list():
+    if request.method == 'POST':
+        selected_ids = request.form.getlist('selected')
+        if selected_ids:
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            c.executemany("DELETE FROM equipment WHERE id = ?", [(id,) for id in selected_ids])
+            conn.commit()
+            conn.close()
+            flash('Selected equipment deleted.')
+        return redirect(url_for('equipment_list'))
+
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute("SELECT id, name, manufacturer, category FROM equipment")
+    equipment = c.fetchall()
+    conn.close()
+    return render_template('equipment_list.html', equipment=equipment)
+
+@app.route('/admin/edit_equipment/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_equipment(id):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM equipment WHERE id = ?", (id,))
+    equip = c.fetchone()
+    if not equip:
+        flash('Equipment not found.')
+        return redirect(url_for('equipment_list'))
+    specs = eval(equip[4]) if equip[4] else {}
+
+    c.execute("SELECT item_name FROM spec_items")
+    spec_items = [row[0] for row in c.fetchall()]
+    conn.close()
+
+    form = EditEquipmentForm()
+    if request.method == 'POST':
+        name = request.form['name']
+        manufacturer = request.form['manufacturer']
+        category = request.form['category']
+        upload_date = request.form['upload_date']
+        image = request.files['image'] if 'image' in request.files else None
+        image_url = equip[5]  # 기존 이미지 유지
+        if image:
+            image_filename = image.filename
+            s3.upload_fileobj(image, 'equipment-images', image_filename)
+            image_url = f"{os.getenv('R2_ENDPOINT_URL')}/equipment-images/{image_filename}"
+        specs = {}
+        spec_names = request.form.getlist('spec_name[]')
+        spec_values = request.form.getlist('spec_value[]')
+        for name, value in zip(spec_names, spec_values):
+            if value:
+                specs[name] = value
+        specs_str = str(specs)
+        conn = sqlite3.connect('database.db')
+        c = conn.cursor()
+        c.execute("UPDATE equipment SET name = ?, manufacturer = ?, category = ?, specs = ?, image = ?, upload_date = ? WHERE id = ?",
+                  (name, manufacturer, category, specs_str, image_url, upload_date, id))
+        conn.commit()
+        conn.close()
+        flash('Equipment updated.')
+        return redirect(url_for('equipment_list'))
+
+    form.name.data = equip[1]
+    form.manufacturer.data = equip[2]
+    form.category.data = equip[3]
+    form.upload_date.data = equip[6]
+    return render_template('edit_equipment.html', form=form, specs=specs, spec_items=spec_items, current_image=equip[5])
 
 if __name__ == '__main__':
     os.makedirs('static/uploads', exist_ok=True)

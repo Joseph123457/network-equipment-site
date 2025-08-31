@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <title>장비 관리 목록</title>
+</head>
+<body>
+    <h1>장비 관리 목록</h1>
+    <form method="POST">
+        <table>
+            <thead>
+                <tr>
+                    <th>선택</th>
+                    <th>제품이름</th>
+                    <th>제조사</th>
+                    <th>카테고리</th>
+                    <th>수정</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in equipment %}
+                <tr>
+                    <td><input type="checkbox" name="selected" value="{{ item[0] }}"></td>
+                    <td>{{ item[1] }}</td>
+                    <td>{{ item[2] }}</td>
+                    <td>{{ item[3] }}</td>
+                    <td><a href="/admin/edit_equipment/{{ item[0] }}">수정</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit">선택 삭제</button>
+    </form>
+    <br>
+    <button onclick="window.location.href='/admin'">관리자 페이지로 돌아가기</button>
+    <button onclick="window.location.href='/'">홈</button>
+    <button onclick="window.history.back()">뒤로가기</button>
+</body>
+</html>

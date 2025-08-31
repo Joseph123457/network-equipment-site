@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <title>장비 수정</title>
+    <style>
+        .spec-row { display: flex; align-items: center; margin-bottom: 10px; }
+        .spec-row select, .spec-row input { margin-right: 10px; }
+        .spec-row button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <form method="POST" enctype="multipart/form-data">
+        <label>제품명:</label> <input type="text" name="name" value="{{ form.name.data }}"><br>
+        <label>제조사:</label> <input type="text" name="manufacturer" value="{{ form.manufacturer.data }}"><br>
+        <label>카테고리:</label> <select name="category">
+            <option value="보안" {% if form.category.data == '보안' %}selected{% endif %}>보안</option>
+            <option value="네트워크" {% if form.category.data == '네트워크' %}selected{% endif %}>네트워크</option>
+            <option value="서버" {% if form.category.data == '서버' %}selected{% endif %}>서버</option>
+        </select><br>
+        <label>업로드 날짜:</label> <input type="date" name="upload_date" value="{{ form.upload_date.data }}"><br>
+        <label>사진:</label> <input type="file" name="image"><br>
+        {% if current_image %}
+        <img src="{{ current_image }}" alt="현재 이미지" style="width:200px;"><br>
+        {% endif %}
+        <h3>기술 스펙</h3>
+        <div id="spec-container">
+            {% for key, value in specs.items() %}
+            <div class="spec-row">
+                <select name="spec_name[]">
+                    {% for item in spec_items %}
+                    <option value="{{ item }}" {% if key == item %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="spec_value[]" value="{{ value }}" placeholder="값 입력">
+                <button type="button" onclick="this.parentElement.remove()">X</button>
+            {% endfor %}
+        </div>
+        <button type="button" onclick="addSpecRow()">스펙 추가</button><br><br>
+        <button type="submit">저장</button>
+        <button type="button" onclick="window.location.href='/admin/equipment_list'">취소</button>
+    </form>
+    <br>
+    <button onclick="window.location.href='/admin'">관리자 페이지로 돌아가기</button>
+    <button onclick="window.location.href='/'">홈</button>
+    <button onclick="window.history.back()">뒤로가기</button>
+    <script>
+        const specItems = {{ spec_items | tojson }};
+        function addSpecRow() {
+            const container = document.getElementById('spec-container');
+            const row = document.createElement('div');
+            row.className = 'spec-row';
+            row.innerHTML = `
+                <select name="spec_name[]">
+                    ${specItems.map(item => `<option value="${item}">${item}</option>`).join('')}
+                </select>
+                <input type="text" name="spec_value[]" placeholder="값 입력">
+                <button type="button" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(row);
+        }
+    </script>
+</body>
+</html>
