@@ -8,6 +8,9 @@ import os
 import boto3
 import requests
 import random
+import pdfplumber
+import re
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super_secret_key')
@@ -51,12 +54,100 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
 
-class EditEquipmentForm(FlaskForm):
+class AddEquipmentForm(FlaskForm):
     name = StringField('제품명', validators=[DataRequired()])
     manufacturer = StringField('제조사', validators=[DataRequired()])
     category = SelectField('카테고리', choices=[('전송', '전송'), ('네트워크', '네트워크'), ('보안', '보안'), ('솔루션', '솔루션'), ('전원', '전원')])
     upload_date = StringField('업로드 날짜', validators=[DataRequired()])
     image = FileField('사진')
+    datasheet = FileField('데이터시트 (PDF)')
+    product_url = StringField('웹페이지 링크')
+
+def parse_datasheet(file):
+    try:
+        with pdfplumber.open(file) as pdf:
+            text = ''
+            for page in pdf.pages:
+                text += page.extract_text() or ''
+        
+        # 키워드 기반 정보 추출 (간단한 규칙)
+        extracted_data = {'name': '', 'manufacturer': '', 'specs': {}}
+        
+        # 제품명 추출
+        name_match = re.search(r'(?:Product Name|Model)\s*[:=]\s*([^\n]+)', text, re.IGNORECASE)
+        if name_match:
+            extracted_data['name'] = name_match.group(1).strip()
+        
+        # 제조사 추출
+        manufacturer_match = re.search(r'(?:Manufacturer|Brand)\s*[:=]\s*([^\n]+)', text, re.IGNORECASE)
+        if manufacturer_match:
+            extracted_data['manufacturer'] = manufacturer_match.group(1).strip()
+        
+        # 스펙 추출
+        spec_matches = re.findall(r'(\w+)\s*[:=]\s*([^\n]+)', text, re.IGNORECASE)
+        for key, value in spec_matches:
+            key = key.lower().strip()
+            value = value.strip()
+            extracted_data['specs'][key] = value
+            # 신규 스펙 추가
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            c.execute("INSERT OR IGNORE INTO spec_items (item_name) VALUES (?)", (key,))
+            conn.commit()
+            conn.close()
+        
+        return extracted_data
+    except Exception as e:
+        print(f"Error parsing datasheet: {e}")
+        return None
+
+def parse_product_page(url):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        extracted_data_list = []
+        
+        # 여러 제품 추출 가정 (e.g., div class="product")
+        products = soup.find_all('div', class_='product')
+        if not products:
+            # 단일 제품 가정
+            products = [soup]
+        
+        for product in products:
+            extracted_data = {'name': '', 'manufacturer': '', 'specs': {}}
+            
+            # 제품명 추출
+            name_tag = product.find('h2', class_='product-name')
+            if name_tag:
+                extracted_data['name'] = name_tag.text.strip()
+            
+            # 제조사 추출
+            manufacturer_tag = product.find('p', class_='manufacturer')
+            if manufacturer_tag:
+                extracted_data['manufacturer'] = manufacturer_tag.text.strip()
+            
+            # 스펙 추출
+            spec_list = product.find_all('li', class_='spec-item')
+            for spec in spec_list:
+                match = re.match(r'(\w+)\s*:\s*([^\n]+)', spec.text, re.IGNORECASE)
+                if match:
+                    key = match.group(1).lower().strip()
+                    value = match.group(2).strip()
+                    extracted_data['specs'][key] = value
+                    # 신규 스펙 추가
+                    conn = sqlite3.connect('database.db')
+                    c = conn.cursor()
+                    c.execute("INSERT OR IGNORE INTO spec_items (item_name) VALUES (?)", (key,))
+                    conn.commit()
+                    conn.close()
+            
+            if extracted_data['name']:  # 유효한 제품만 추가
+                extracted_data_list.append(extracted_data)
+        
+        return extracted_data_list
+    except Exception as e:
+        print(f"Error parsing URL: {e}")
+        return []
 
 def send_otp_to_telegram(chat_id, token, otp):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -168,37 +259,55 @@ def logout():
 @app.route('/admin/add_equipment', methods=['GET', 'POST'])
 @login_required
 def add_equipment():
+    form = AddEquipmentForm()
     if request.method == 'POST':
-        name = request.form['name']
-        manufacturer = request.form['manufacturer']
-        category = request.form['category']
-        upload_date = request.form['upload_date']
-        image = request.files['image'] if 'image' in request.files else None
-        image_url = ''
-        if image:
-            image_filename = image.filename
-            s3.upload_fileobj(image, 'equipment-images', image_filename)
-            image_url = f"{os.getenv('R2_ENDPOINT_URL')}/equipment-images/{image_filename}"
-        specs = {}
-        spec_names = request.form.getlist('spec_name[]')
-        spec_values = request.form.getlist('spec_value[]')
-        for name, value in zip(spec_names, spec_values):
-            if value:
-                specs[name] = value
-        specs_str = str(specs)
-        conn = sqlite3.connect('database.db')
-        c = conn.cursor()
-        c.execute("INSERT INTO equipment (name, manufacturer, category, specs, image, upload_date) VALUES (?, ?, ?, ?, ?, ?)",
-                  (name, manufacturer, category, specs_str, image_url, upload_date))
-        conn.commit()
-        conn.close()
-        return redirect(url_for('admin_dashboard'))
+        datasheet = form.datasheet.data
+        product_url = form.product_url.data
+        extracted_data = None
+        if 'extract' in request.form:
+            if datasheet:
+                extracted_data = parse_datasheet(datasheet)
+            elif product_url:
+                extracted_data = parse_product_page(product_url)
+            if extracted_data:
+                if isinstance(extracted_data, list):
+                    # 다중 제품
+                    return render_template('add_equipment.html', form=form, extracted_list=extracted_data)
+                else:
+                    form.name.data = extracted_data['name']
+                    form.manufacturer.data = extracted_data['manufacturer']
+                    return render_template('add_equipment.html', form=form, extracted_specs=extracted_data['specs'])
+        elif form.validate_on_submit():
+            name = form.name.data
+            manufacturer = form.manufacturer.data
+            category = form.category.data
+            upload_date = form.upload_date.data
+            image = form.image.data if form.image.data else None
+            image_url = ''
+            if image:
+                image_filename = image.filename
+                s3.upload_fileobj(image, 'equipment-images', image_filename)
+                image_url = f"{os.getenv('R2_ENDPOINT_URL')}/equipment-images/{image_filename}"
+            specs = {}
+            spec_names = request.form.getlist('spec_name[]')
+            spec_values = request.form.getlist('spec_value[]')
+            for name, value in zip(spec_names, spec_values):
+                if value:
+                    specs[name] = value
+            specs_str = str(specs)
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            c.execute("INSERT INTO equipment (name, manufacturer, category, specs, image, upload_date) VALUES (?, ?, ?, ?, ?, ?)",
+                      (name, manufacturer, category, specs_str, image_url, upload_date))
+            conn.commit()
+            conn.close()
+            return redirect(url_for('admin_dashboard'))
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute("SELECT item_name FROM spec_items")
     spec_items = [row[0] for row in c.fetchall()]
     conn.close()
-    return render_template('add_equipment.html', spec_items=spec_items)
+    return render_template('add_equipment.html', form=form, spec_items=spec_items, extracted_specs={}, extracted_list=[])
 
 @app.route('/admin/manage_specs', methods=['GET', 'POST'])
 @login_required
@@ -265,7 +374,7 @@ def edit_equipment(id):
     spec_items = [row[0] for row in c.fetchall()]
     conn.close()
 
-    form = EditEquipmentForm()
+    form = AddEquipmentForm()
     if request.method == 'POST' and form.validate_on_submit():
         name = form.name.data
         manufacturer = form.manufacturer.data
