@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, SelectField, FileField, TextAreaField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, FileField
 from wtforms.validators import DataRequired
 import sqlite3
 import os
@@ -54,7 +54,7 @@ class LoginForm(FlaskForm):
 class EditEquipmentForm(FlaskForm):
     name = StringField('제품명', validators=[DataRequired()])
     manufacturer = StringField('제조사', validators=[DataRequired()])
-    category = SelectField('카테고리', choices=[('보안', '보안'), ('네트워크', '네트워크'), ('서버', '서버')])
+    category = SelectField('카테고리', choices=[('전송', '전송'), ('네트워크', '네트워크'), ('보안', '보안'), ('솔루션', '솔루션'), ('전원', '전원')])
     upload_date = StringField('업로드 날짜', validators=[DataRequired()])
     image = FileField('사진')
 
@@ -67,15 +67,27 @@ def send_otp_to_telegram(chat_id, token, otp):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute("SELECT id, name, manufacturer, category FROM equipment ORDER BY id DESC LIMIT 5")
+    recent_equipment = c.fetchall()
+    conn.close()
+    return render_template('index.html', recent_equipment=recent_equipment)
 
 @app.route('/search', methods=['GET'])
 def search():
     query = request.args.get('q', '').lower()
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    offset = (page - 1) * per_page
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute("SELECT * FROM equipment WHERE LOWER(name) LIKE ? OR LOWER(manufacturer) LIKE ? OR LOWER(specs) LIKE ?",
+    c.execute("SELECT COUNT(*) FROM equipment WHERE LOWER(name) LIKE ? OR LOWER(manufacturer) LIKE ? OR LOWER(specs) LIKE ?",
               (f'%{query}%', f'%{query}%', f'%{query}%'))
+    total = c.fetchone()[0]
+    total_pages = (total // per_page) + (1 if total % per_page else 0)
+    c.execute("SELECT * FROM equipment WHERE LOWER(name) LIKE ? OR LOWER(manufacturer) LIKE ? OR LOWER(specs) LIKE ? LIMIT ? OFFSET ?",
+              (f'%{query}%', f'%{query}%', f'%{query}%', per_page, offset))
     results = c.fetchall()
     conn.close()
     filtered_results = []
@@ -84,7 +96,44 @@ def search():
         if (query in result[1].lower() or query in result[2].lower() or
             any(query in str(value).lower() for value in specs.values())):
             filtered_results.append(result)
-    return render_template('search.html', results=filtered_results)
+    return render_template('search.html', results=filtered_results, query=query, page=page, total_pages=total_pages)
+
+@app.route('/compare', methods=['GET'])
+def compare():
+    selected_ids = request.args.getlist('selected')
+    if len(selected_ids) < 2:
+        flash('2개 이상의 제품을 선택해주세요.')
+        return redirect(url_for('search'))
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    equipment = []
+    for id in selected_ids:
+        c.execute("SELECT * FROM equipment WHERE id = ?", (id,))
+        equip = c.fetchone()
+        specs = eval(equip[4]) if equip[4] else {}
+        equipment.append((equip, specs))
+    conn.close()
+    return render_template('compare.html', equipment=equipment)
+
+@app.route('/category/<category>')
+def category(category):
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    offset = (page - 1) * per_page
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    if category == '전체':
+        c.execute("SELECT COUNT(*) FROM equipment")
+        total = c.fetchone()[0]
+        c.execute("SELECT id, name, manufacturer, category FROM equipment ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
+    else:
+        c.execute("SELECT COUNT(*) FROM equipment WHERE category = ?", (category,))
+        total = c.fetchone()[0]
+        c.execute("SELECT id, name, manufacturer, category FROM equipment WHERE category = ? LIMIT ? OFFSET ?", (category, per_page, offset))
+    equipment = c.fetchall()
+    total_pages = (total // per_page) + (1 if total % per_page else 0)
+    conn.close()
+    return render_template('category.html', equipment=equipment, category=category, page=page, total_pages=total_pages)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -190,7 +239,7 @@ def equipment_list():
             c.executemany("DELETE FROM equipment WHERE id = ?", [(id,) for id in selected_ids])
             conn.commit()
             conn.close()
-            flash('Selected equipment deleted.')
+            flash('선택한 장비가 삭제되었습니다.')
         return redirect(url_for('equipment_list'))
 
     conn = sqlite3.connect('database.db')
@@ -208,7 +257,7 @@ def edit_equipment(id):
     c.execute("SELECT * FROM equipment WHERE id = ?", (id,))
     equip = c.fetchone()
     if not equip:
-        flash('Equipment not found.')
+        flash('장비를 찾을 수 없습니다.')
         return redirect(url_for('equipment_list'))
     specs = eval(equip[4]) if equip[4] else {}
 
@@ -217,12 +266,12 @@ def edit_equipment(id):
     conn.close()
 
     form = EditEquipmentForm()
-    if request.method == 'POST':
-        name = request.form['name']
-        manufacturer = request.form['manufacturer']
-        category = request.form['category']
-        upload_date = request.form['upload_date']
-        image = request.files['image'] if 'image' in request.files else None
+    if request.method == 'POST' and form.validate_on_submit():
+        name = form.name.data
+        manufacturer = form.manufacturer.data
+        category = form.category.data
+        upload_date = form.upload_date.data
+        image = form.image.data if form.image.data else None
         image_url = equip[5]  # 기존 이미지 유지
         if image:
             image_filename = image.filename
@@ -241,7 +290,7 @@ def edit_equipment(id):
                   (name, manufacturer, category, specs_str, image_url, upload_date, id))
         conn.commit()
         conn.close()
-        flash('Equipment updated.')
+        flash('장비 정보가 수정되었습니다.')
         return redirect(url_for('equipment_list'))
 
     form.name.data = equip[1]

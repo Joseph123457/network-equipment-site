@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>데이터시트 라이브러리 - 장비 비교</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="{{ url_for('index') }}">데이터시트 라이브러리</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">홈</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_login') }}">관리자</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">장비 비교</h1>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert alert-danger">
+            {% for message in messages %}
+            {{ message }}
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        <table class="table table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th class="text-center">항목</th>
+                    {% for equip, specs in equipment %}
+                    <th class="text-center">{{ equip[1] }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">제조사</td>
+                    {% for equip, specs in equipment %}
+                    <td class="text-center">{{ equip[2] }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td class="text-center">카테고리</td>
+                    {% for equip, specs in equipment %}
+                    <td class="text-center">{{ equip[3] }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td class="text-center">업로드 날짜</td>
+                    {% for equip, specs in equipment %}
+                    <td class="text-center">{{ equip[6] }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td class="text-center">이미지</td>
+                    {% for equip, specs in equipment %}
+                    <td class="text-center">
+                        {% if equip[5] %}
+                        <img src="{{ equip[5] }}" alt="장비 이미지" class="img-fluid" style="max-width: 150px;">
+                        {% else %}
+                        이미지가 없습니다.
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% for key in equipment[0][1].keys() %}
+                <tr>
+                    <td class="text-center">{{ key }}</td>
+                    {% for equip, specs in equipment %}
+                    <td class="text-center">{{ specs.get(key, '-') }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="mt-3 text-center">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">홈</a>
+            <button onclick="window.history.back()" class="btn btn-outline-secondary">뒤로가기</button>
+        </div>
+    </div>
+    <footer class="bg-light text-center py-3 mt-4">
+        <p>Copyright 2025. 전재현 all rights reserved</p>
+    </footer>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

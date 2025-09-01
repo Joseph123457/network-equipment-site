@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>장비 관리 목록</title>
+    <title>데이터시트 라이브러리 - 장비 관리 목록</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{ url_for('index') }}">네트워크 장비</a>
+        <a class="navbar-brand" href="{{ url_for('index') }}">데이터시트 라이브러리</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}">홈</a>
                 </li>
@@ -38,21 +38,21 @@
             <table class="table table-bordered table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th>선택</th>
-                        <th>제품명</th>
-                        <th>제조사</th>
-                        <th>카테고리</th>
-                        <th>수정</th>
+                        <th class="text-center">선택</th>
+                        <th class="text-center">제품명</th>
+                        <th class="text-center">제조사</th>
+                        <th class="text-center">카테고리</th>
+                        <th class="text-center">수정</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in equipment %}
                     <tr>
-                        <td><input type="checkbox" name="selected" value="{{ item[0] }}"></td>
-                        <td>{{ item[1] }}</td>
-                        <td>{{ item[2] }}</td>
-                        <td>{{ item[3] }}</td>
-                        <td><a href="{{ url_for('edit_equipment', id=item[0]) }}" class="btn btn-sm btn-primary">수정</a></td>
+                        <td class="text-center"><input type="checkbox" name="selected" value="{{ item[0] }}"></td>
+                        <td class="text-center">{{ item[1] }}</td>
+                        <td class="text-center">{{ item[2] }}</td>
+                        <td class="text-center">{{ item[3] }}</td>
+                        <td class="text-center"><a href="{{ url_for('edit_equipment', id=item[0]) }}" class="btn btn-sm btn-primary">수정</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -65,6 +65,9 @@
             <button onclick="window.history.back()" class="btn btn-outline-secondary">뒤로가기</button>
         </div>
     </div>
+    <footer class="bg-light text-center py-3 mt-4">
+        <p>Copyright 2025. 전재현 all rights reserved</p>
+    </footer>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

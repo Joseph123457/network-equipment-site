@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>네트워크 장비 검색</title>
+    <title>데이터시트 라이브러리</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{ url_for('index') }}">네트워크 장비</a>
+        <a class="navbar-brand" href="{{ url_for('index') }}">데이터시트 라이브러리</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav ml-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="{{ url_for('index') }}">홈 <span class="sr-only">(current)</span></a>
                 </li>
@@ -24,15 +24,42 @@
         </div>
     </nav>
     <div class="container mt-4">
-        <h1 class="text-center mb-4">네트워크 장비 검색</h1>
         <form method="GET" action="/search" class="form-inline justify-content-center">
-            <input type="text" name="q" class="form-control mr-2" placeholder="장비명, 제조사, 스펙 검색">
+            <input type="text" name="q" class="form-control col-md-9 mr-2" placeholder="장비명, 제조사, 스펙 검색">
             <button type="submit" class="btn btn-primary">검색</button>
         </form>
-        <div class="mt-3 text-center">
-            <a href="{{ url_for('admin_login') }}" class="btn btn-secondary">관리자 로그인</a>
+        <h3 class="text-center mt-4">최근 등록 장비</h3>
+        <table class="table table-bordered table-hover">
+            <thead class="thead-dark">
+                <tr>
+                    <th class="text-center">제품명</th>
+                    <th class="text-center">제조사</th>
+                    <th class="text-center">카테고리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in recent_equipment %}
+                <tr>
+                    <td class="text-center"><a href="{{ url_for('equipment_detail', id=item[0]) }}">{{ item[1] }}</a></td>
+                    <td class="text-center">{{ item[2] }}</td>
+                    <td class="text-center">{{ item[3] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <h3 class="text-center mt-4">카테고리</h3>
+        <div class="d-flex justify-content-center flex-wrap">
+            <a href="{{ url_for('category', category='전체') }}" class="btn btn-outline-primary m-2">전체</a>
+            <a href="{{ url_for('category', category='전송') }}" class="btn btn-outline-primary m-2">전송</a>
+            <a href="{{ url_for('category', category='네트워크') }}" class="btn btn-outline-primary m-2">네트워크</a>
+            <a href="{{ url_for('category', category='보안') }}" class="btn btn-outline-primary m-2">보안</a>
+            <a href="{{ url_for('category', category='솔루션') }}" class="btn btn-outline-primary m-2">솔루션</a>
+            <a href="{{ url_for('category', category='전원') }}" class="btn btn-outline-primary m-2">전원</a>
         </div>
     </div>
+    <footer class="bg-light text-center py-3 mt-4">
+        <p>Copyright 2025. 전재현 all rights reserved</p>
+    </footer>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

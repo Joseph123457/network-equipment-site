@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>장비 수정</title>
+    <title>데이터시트 라이브러리 - 장비 수정</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         .spec-row { display: flex; align-items: center; margin-bottom: 10px; }
@@ -13,12 +13,12 @@
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{ url_for('index') }}">네트워크 장비</a>
+        <a class="navbar-brand" href="{{ url_for('index') }}">데이터시트 라이브러리</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}">홈</a>
                 </li>
@@ -51,9 +51,11 @@
             <div class="form-group">
                 <label for="category">카테고리:</label>
                 <select class="form-control" name="category" id="category">
-                    <option value="보안" {% if form.category.data == '보안' %}selected{% endif %}>보안</option>
+                    <option value="전송" {% if form.category.data == '전송' %}selected{% endif %}>전송</option>
                     <option value="네트워크" {% if form.category.data == '네트워크' %}selected{% endif %}>네트워크</option>
-                    <option value="서버" {% if form.category.data == '서버' %}selected{% endif %}>서버</option>
+                    <option value="보안" {% if form.category.data == '보안' %}selected{% endif %}>보안</option>
+                    <option value="솔루션" {% if form.category.data == '솔루션' %}selected{% endif %}>솔루션</option>
+                    <option value="전원" {% if form.category.data == '전원' %}selected{% endif %}>전원</option>
                 </select>
             </div>
             <div class="form-group">
@@ -93,6 +95,9 @@
             <button onclick="window.history.back()" class="btn btn-outline-secondary">뒤로가기</button>
         </div>
     </div>
+    <footer class="bg-light text-center py-3 mt-4">
+        <p>Copyright 2025. 전재현 all rights reserved</p>
+    </footer>
     <script>
         const specItems = {{ spec_items | tojson }};
         function addSpecRow() {
