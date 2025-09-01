@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super_secret_key')
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB 제한
 
 # R2 설정
 s3 = boto3.client('s3',
@@ -65,23 +66,34 @@ class AddEquipmentForm(FlaskForm):
 
 def parse_datasheet(file):
     try:
+        print(f"Processing file: {file.filename}, Size: {file.content_length} bytes")
+        if file.content_length > 5 * 1024 * 1024:
+            flash("PDF 파일이 너무 큽니다. 5MB 이하로 업로드해주세요.")
+            return None
         with pdfplumber.open(file) as pdf:
             text = ''
-            for page in pdf.pages:
-                text += page.extract_text() or ''
+            for i, page in enumerate(pdf.pages[:10]):  # 최대 10페이지
+                page_text = page.extract_text()
+                print(f"Page {i+1} text: {page_text}")
+                text += page_text or ''
+                if len(text) > 100000:  # 텍스트 크기 제한
+                    flash("PDF 텍스트가 너무 큽니다. 더 작은 파일을 사용해주세요.")
+                    return None
         
-        # 키워드 기반 정보 추출 (간단한 규칙)
         extracted_data = {'name': '', 'manufacturer': '', 'specs': {}}
+        print(f"Extracted text: {text[:1000]}...")  # 로그 크기 제한
         
         # 제품명 추출
         name_match = re.search(r'(?:Product Name|Model)\s*[:=]\s*([^\n]+)', text, re.IGNORECASE)
         if name_match:
             extracted_data['name'] = name_match.group(1).strip()
+            print(f"Extracted name: {extracted_data['name']}")
         
         # 제조사 추출
         manufacturer_match = re.search(r'(?:Manufacturer|Brand)\s*[:=]\s*([^\n]+)', text, re.IGNORECASE)
         if manufacturer_match:
             extracted_data['manufacturer'] = manufacturer_match.group(1).strip()
+            print(f"Extracted manufacturer: {extracted_data['manufacturer']}")
         
         # 스펙 추출
         spec_matches = re.findall(r'(\w+)\s*[:=]\s*([^\n]+)', text, re.IGNORECASE)
@@ -89,16 +101,22 @@ def parse_datasheet(file):
             key = key.lower().strip()
             value = value.strip()
             extracted_data['specs'][key] = value
-            # 신규 스펙 추가
-            conn = sqlite3.connect('database.db')
-            c = conn.cursor()
-            c.execute("INSERT OR IGNORE INTO spec_items (item_name) VALUES (?)", (key,))
-            conn.commit()
-            conn.close()
+            print(f"Extracted spec: {key} = {value}")
+            try:
+                conn = sqlite3.connect('database.db')
+                c = conn.cursor()
+                c.execute("INSERT OR IGNORE INTO spec_items (item_name) VALUES (?)", (key,))
+                conn.commit()
+            except sqlite3.Error as e:
+                print(f"SQLite error: {e}")
+                flash(f"데이터베이스 오류: {e}")
+            finally:
+                conn.close()
         
         return extracted_data
     except Exception as e:
-        print(f"Error parsing datasheet: {e}")
+        print(f"Error parsing datasheet: {str(e)}")
+        flash(f"PDF 처리 중 오류 발생: {str(e)}")
         return None
 
 def parse_product_page(url):
@@ -134,19 +152,24 @@ def parse_product_page(url):
                     key = match.group(1).lower().strip()
                     value = match.group(2).strip()
                     extracted_data['specs'][key] = value
-                    # 신규 스펙 추가
-                    conn = sqlite3.connect('database.db')
-                    c = conn.cursor()
-                    c.execute("INSERT OR IGNORE INTO spec_items (item_name) VALUES (?)", (key,))
-                    conn.commit()
-                    conn.close()
+                    try:
+                        conn = sqlite3.connect('database.db')
+                        c = conn.cursor()
+                        c.execute("INSERT OR IGNORE INTO spec_items (item_name) VALUES (?)", (key,))
+                        conn.commit()
+                    except sqlite3.Error as e:
+                        print(f"SQLite error: {e}")
+                        flash(f"데이터베이스 오류: {e}")
+                    finally:
+                        conn.close()
             
             if extracted_data['name']:  # 유효한 제품만 추가
                 extracted_data_list.append(extracted_data)
         
         return extracted_data_list
     except Exception as e:
-        print(f"Error parsing URL: {e}")
+        print(f"Error parsing URL: {str(e)}")
+        flash(f"URL 처리 중 오류 발생: {str(e)}")
         return []
 
 def send_otp_to_telegram(chat_id, token, otp):
