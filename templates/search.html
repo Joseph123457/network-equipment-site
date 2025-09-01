@@ -1,13 +1,61 @@
 <!DOCTYPE html>
-<html>
-<head><title>검색 결과</title></head>
-<body>
-    <h1>검색 결과</h1>
-    {% for result in results %}
-        <a href="/equipment/{{ result[0] }}">{{ result[1] }} ({{ result[2] }})</a><br>
-    {% endfor %}
-    <br>
-    <button onclick="history.back()">뒤로가기</button>
-    <a href="/">홈</a>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>검색 결과</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="{{ url_for('index') }}">네트워크 장비</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">홈</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_login') }}">관리자</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">검색 결과</h1>
+        {% if results %}
+        <table class="table table-bordered table-hover">
+            <thead class="thead-dark">
+                <tr>
+                    <th>제품명</th>
+                    <th>제조사</th>
+                    <th>카테고리</th>
+                    <th>상세 보기</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ result[1] }}</td>
+                    <td>{{ result[2] }}</td>
+                    <td>{{ result[3] }}</td>
+                    <td><a href="{{ url_for('equipment_detail', id=result[0]) }}" class="btn btn-sm btn-primary">상세 보기</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-center">검색 결과가 없습니다.</p>
+        {% endif %}
+        <div class="mt-3 text-center">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">홈</a>
+            <button onclick="window.history.back()" class="btn btn-outline-secondary">뒤로가기</button>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
